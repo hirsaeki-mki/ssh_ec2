@@ -22,6 +22,12 @@ if not "%~1"=="" (
     shift
   ) else if "%~1"=="--send-key-only" (
     set "SEND_KEY_ONLY=true"
+  ) else if "%~1"=="--profile" (
+    set "PROFILE=%~2"
+    shift
+  ) else if "%~1"=="--region" (
+    set "REGION=%~2"
+    shift
   )
   shift
   goto :loop
@@ -39,9 +45,17 @@ if "%KEY_FILE%"=="" (
   set "KEY_FILE=%USERPROFILE%\.ssh\id_rsa.pub"
 )
 
+if "%PROFILE%"=="" (
+  set "PROFILE=default"
+)
+
+if "%REGION%"=="" (
+  set "REGION=ap-northeast-1"
+)
+
 for /F "delims=" %%R in ("%KEY_FILE%") do set KEY_FILE_URL=%%~fR
-set "KEY_FILE_URL=file:///%KEY_FILE_URL%"
-set "KEY_FILE_URL=%KEY_FILE_URL:///\\=//%"
+set "KEY_FILE_URL=file://%KEY_FILE_URL%"
+set "KEY_FILE_URL=%KEY_FILE_URL://\\=//%"
 set "KEY_FILE_URL=%KEY_FILE_URL:\=/%"
 
 call :_get_instance_az
@@ -49,17 +63,17 @@ call :_get_instance_az
 call :_send_ssh_public_key_to_instance
 
 if NOT "%SEND_KEY_ONLY%"=="true" (
-  aws ssm start-session --target %INSTANCE_ID% --document-name AWS-StartSSHSession --parameters portNumber=%PORT_NUMBER% 
+  aws ssm start-session --target %INSTANCE_ID% --document-name AWS-StartSSHSession --parameters portNumber=%PORT_NUMBER% --profile %PROFILE% --region %REGION%
 )
 
 goto EOF
 
 :_get_instance_az
-    FOR /F "tokens=1 usebackq delims=^:" %%f in (`aws ec2 describe-instances --instance-ids="%INSTANCE_ID%" --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text`) do set "AZ=%%~f"
+    FOR /F "tokens=1 usebackq delims=^:" %%f in (`aws ec2 describe-instances --instance-ids="%INSTANCE_ID%" --query "Reservations[0].Instances[0].Placement.AvailabilityZone" --profile %PROFILE% --region %REGION% --output text`) do set "AZ=%%~f"
 goto EOF
 
 :_send_ssh_public_key_to_instance
-    aws ec2-instance-connect send-ssh-public-key --instance-id "%INSTANCE_ID%" --availability-zone "%AZ%" --instance-os-user "%USER_NAME%" --ssh-public-key "%KEY_FILE_URL%"
+    aws ec2-instance-connect send-ssh-public-key --instance-id "%INSTANCE_ID%" --availability-zone "%AZ%" --instance-os-user "%USER_NAME%" --ssh-public-key "%KEY_FILE_URL%" --profile %PROFILE% --region %REGION% >&2
 goto EOF
 
 :_usage
@@ -93,7 +107,7 @@ Requirements:^
 
           [Telnet command, or local proxy command]^
 
-            "ssh_ec2 %%host --port-number %%port\n"^
+            cmd /c "ssh_ec2 %%host --port-number %%port --profile xxx"^
 
  ^
 
@@ -112,6 +126,10 @@ Options:^
     --key-file:         (default: "%USERPROFILE%\.ssh\id_rsa.pub")^
 
     --port-number:      (default: 22)^
+
+    --profie:           (default: "default")^ 
+
+    --region:           (default: "ap-northeast-1")^ 
 
     --send-key-only:    Only transfer the key and do not execute ssh command. (default: false) >&2
 
