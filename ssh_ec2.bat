@@ -127,9 +127,9 @@ Options:^
 
     --port-number:      (default: 22)^
 
-    --profie:           (default: "default")^ 
+    --profie:           (default: "default")^
 
-    --region:           (default: "ap-northeast-1")^ 
+    --region:           (default: "ap-northeast-1")^
 
     --send-key-only:    Only transfer the key and do not execute ssh command. (default: false) >&2
 
